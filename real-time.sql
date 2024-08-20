@@ -108,7 +108,7 @@
       from callers_in_contract
       group by transaction_hash, to_address
     ),
-    ################ distinct_c_s_called #################
+    ################ distinct_contract_s_called #################
     contracts_in_caller AS (
       select
         transaction_info.transaction_hash,
