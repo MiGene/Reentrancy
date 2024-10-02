@@ -1,3 +1,4 @@
+import pandas as pd
 from scipy.stats import zscore
 
 def find_nulls(df):
@@ -31,3 +32,26 @@ def add_ratio_features(df):
     df['sender_block_per_tx'] = df['sender_block_involved']/df['sender_tx_count']
     df['contract_block_per_tx'] = df['contract_block_involved']/df['contract_tx_count']
     return df
+
+def merge_files(folder_path,files_list,prefix=''):
+    sample_file_path = f'{folder_path}/{prefix}{files_list[0]}.csv'
+    sample_df = pd.read_csv(sample_file_path)
+    result_df = pd.DataFrame(columns=sample_df.columns)
+
+    # Loop through each CSV file
+    for file in files_list:
+        file_path = f'{folder_path}/{prefix}{file}.csv'
+        # Read the CSV file
+        df = pd.read_csv(file_path)
+        # Extract values from column A and append them to the result DataFrame
+        result_df = pd.concat([result_df,df], ignore_index=True)
+
+    return result_df
+
+def add_cols(base_df,add_df,join_by,cols_to_add):
+
+    add_df = add_df[cols_to_add+[join_by]]
+
+    merged_df = pd.merge(base_df, add_df, on=join_by, how='left')
+
+    return merged_df
