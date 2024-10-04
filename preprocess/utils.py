@@ -55,3 +55,31 @@ def add_cols(base_df,add_df,join_by,cols_to_add):
     merged_df = pd.merge(base_df, add_df, on=join_by, how='left')
 
     return merged_df
+
+def recalculate_interactions(transaction_info):
+    # Ensure block_timestamp is in datetime format for sorting
+    transaction_info['block_timestamp'] = pd.to_datetime(transaction_info['block_timestamp'])
+    
+    # Sort by 'to_address' and 'block_timestamp'
+    transaction_info = transaction_info.sort_values(by=['to_address', 'block_timestamp'])
+
+    # Create a new column 'contract_interact' which mimics ROW_NUMBER() OVER (PARTITION BY to_address ORDER BY block_timestamp)
+    transaction_info['contract_interact'] = transaction_info.groupby('to_address').cumcount() + 1
+
+    return transaction_info
+
+def time_slice_df(df, num_rows=50, time_col='block_timestamp', sus_col='is_sus', how='last'):
+    # Convert 'time_col' to datetime format
+    df[time_col] = pd.to_datetime(df[time_col])
+
+    # Sort by 'time_col' in descending order (from last to first)
+    df = df.sort_values(by=time_col, ascending=False).reset_index()
+
+    # Find the index of the first row where 'is_sus' == 1
+    sus_index = df[df[sus_col] == 1].index[0] if not df[df[sus_col] == 1].empty else 0
+    # print(df.iloc[sus_index])
+
+    # Slice the DataFrame starting from the 'sus_index'
+    df_sliced = df.iloc[sus_index:sus_index + num_rows]
+
+    return df_sliced

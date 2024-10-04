@@ -8,9 +8,6 @@ from sklearn.metrics import f1_score
 from sklearn.preprocessing import MaxAbsScaler, MinMaxScaler, RobustScaler, StandardScaler
 from sklearn.pipeline import FunctionTransformer, Pipeline
 
-
-
-
 # Load data
 fold_files = ['1.csv','2.csv','3.csv','4.csv','5.csv']
 caught_pf = [0,0,0,0]
@@ -61,12 +58,12 @@ performance_df = pd.DataFrame(columns=['Fold', 'Total Values', 'Matching', 'Matc
                                        'Actual Attack', 'Predicted', 'True Positive',
                                        'False Positive', 'False Negative', 'F1 Score'])
 
-temp = pd.read_csv('./dataset/real-time/fold_upsamped_smote/1.csv')
+temp = pd.read_csv('./50_dataset/real-time/fold_upsamped_smote/1.csv')
 # Perform 5-fold cross-validation
 for i in range(len(fold_files)):
     # Load the data for the current fold
-    file_path_train = './dataset/real-time/fold_upsamped_smote/' #! Change
-    file_path_test = './dataset/real-time/fold/' #! Change
+    file_path_train = './50_dataset/real-time/fold_upsamped_smote/' #! Change
+    file_path_test = './50_dataset/real-time/fold/' #! Change
 
     # Creating Test Data
     # Initialize an empty DataFrame to store the combined data
@@ -90,9 +87,9 @@ for i in range(len(fold_files)):
     #                                   min_samples_leaf=50)
 
     rf_model = RandomForestClassifier(
-            n_estimators=10,  # 250
+            n_estimators=9,  # 250
             max_depth=7,  # 5
-            min_samples_leaf=50,
+            min_samples_leaf=25,
             random_state=42,
             n_jobs=1,
         )  # 50
