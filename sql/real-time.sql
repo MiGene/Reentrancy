@@ -64,6 +64,8 @@ sender_info AS (
     ,COUNT(*) as sender_tx_count
     ,COUNT(DISTINCT block_number)/COUNT(*) as sender_block_per_tx
     ,COUNT(DISTINCT DATE(tx_db.block_timestamp)) as sender_main_active_days
+    ,ABS(date_diff(DATE(max(tx_db.block_timestamp)), DATE(min(tx_db.block_timestamp)),DAY)) as sender_lifetime_days,
+    ,ABS(max(tx_db.block_number)-min(tx_db.block_number)) as sender_lifetime_block
   FROM transaction_info
   LEFT JOIN `bigquery-public-data.crypto_ethereum.transactions` as tx_db
   ON ((transaction_info.from_address = tx_db.from_address) OR (transaction_info.from_address = tx_db.to_address))
@@ -134,8 +136,6 @@ caller_total_contracts AS (
     transaction_hash,
     from_address,
     COUNT(distinct to_address) as distinct_contract_sender_called, 
-    ABS(date_diff(DATE(max(block_timestamp)), DATE(min(block_timestamp)),DAY)) as sender_lifetime_days,
-    ABS(max(block_number)-min(block_number)) as sender_lifetime_block
   from contracts_in_caller
   group by transaction_hash, from_address
 ),
@@ -227,8 +227,6 @@ additional_features AS (
         contract_lifetime_days,
         contract_lifetime_block,
         distinct_contract_sender_called,
-        sender_lifetime_days,
-        sender_lifetime_block,
         contract_involved_amt,
         max_breadth,depth,
         distinct_contract_called as distinct_was_called_in_sample,
