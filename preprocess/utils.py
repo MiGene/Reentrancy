@@ -45,7 +45,7 @@ def merge_files(folder_path,files_list,prefix=''):
         df = pd.read_csv(file_path)
         # Extract values from column A and append them to the result DataFrame
         result_df = pd.concat([result_df,df], ignore_index=True)
-
+    result_df = result_df.drop_duplicates()
     return result_df
 
 def add_cols(base_df,add_df,join_by,cols_to_add):
