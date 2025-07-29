@@ -1,11 +1,27 @@
 import pandas as pd
 from scipy.stats import zscore
 
+Z_SCORE_COLS =  ['trace_involved_amt','contract_block_involved','contract_tx_count','contract_main_active_days',
+                'sender_block_involved','sender_tx_count','sender_main_active_days','contract_interact',
+                'sender_tx_count_call_contract','sender_days_call_contract','trace_amt','distinct_sender_in_contract',
+                'contract_lifetime_days','contract_lifetime_block','distinct_contract_sender_called',
+                'sender_lifetime_days','sender_lifetime_block','contract_involved_amt','max_breadth','depth',
+                'distinct_was_called_in_sample','distinct_sender_call_in_sample','gas','gas_price',
+                'receipt_cumulative_gas_used','receipt_gas_used','value','nonce']
+
+SUS_FILE = '../dataset/sus_tx.csv'  # Replace with the actual file path
+
 def find_nulls(df):
     null_count = df.isnull().sum()
     null_count = null_count[null_count>0]
     print(null_count)
     print('=================')
+
+def impute_depth_and_max_breadth(df):
+    df['max_breadth'] = df['max_breadth']+1
+    df['max_breadth'] = df['max_breadth'].fillna(0)
+    df['depth'] = df['depth'].fillna(0)
+    return df
 
 def add_z_score(df,cols_to_calculate):
     # display(df.info())
@@ -31,6 +47,24 @@ def add_ratio_features(df):
     df['sender_call_contract_day_ratio'] = df['sender_days_call_contract'] / df['contract_main_active_days']
     df['sender_block_per_tx'] = df['sender_block_involved']/df['sender_tx_count']
     df['contract_block_per_tx'] = df['contract_block_involved']/df['contract_tx_count']
+    return df
+
+def add_sus_col(df,attack_transactions):
+
+    def set_value_based_on_condition(row):
+        if (row['transaction_hash'] in attack_transactions):
+            return 1
+        else:
+            return 0
+        
+    df['is_sus'] = df.apply(set_value_based_on_condition, axis=1)
+
+    sus_data = df[df['is_sus'] == 1]
+    not_sus_data = df[df['is_sus'] == 0]
+
+    print(len(sus_data))
+    print(len(not_sus_data))
+
     return df
 
 def merge_files(folder_path,files_list,prefix=''):
@@ -61,7 +95,7 @@ def recalculate_interactions(transaction_info):
     transaction_info['block_timestamp'] = pd.to_datetime(transaction_info['block_timestamp'])
     
     # Sort by 'to_address' and 'block_timestamp'
-    transaction_info = transaction_info.sort_values(by=['to_address', 'block_timestamp'])
+    transaction_info = transaction_info.sort_values(by=['to_address', 'block_timestamp']).reset_index(drop=True)
 
     # Create a new column 'contract_interact' which mimics ROW_NUMBER() OVER (PARTITION BY to_address ORDER BY block_timestamp)
     transaction_info['contract_interact'] = transaction_info.groupby('to_address').cumcount() + 1
@@ -69,9 +103,14 @@ def recalculate_interactions(transaction_info):
     return transaction_info
 
 def time_slice_df(df, num_rows=50, time_col='block_timestamp', sus_col='is_sus', how='last'):
+    sus_df = pd.read_csv(SUS_FILE)
+    sus_transactions = sus_df['sus_tx']
+    sus_transactions = set(sus_transactions)
+    df = add_sus_col(df,sus_transactions)
     # Convert 'time_col' to datetime format
     df[time_col] = pd.to_datetime(df[time_col])
-
+    df = impute_depth_and_max_breadth(df)
+    df['value'] = df['value'].astype('float32')
     # Sort by 'time_col' in descending order (from last to first)
     df = df.sort_values(by=time_col, ascending=False).reset_index()
 
@@ -80,6 +119,13 @@ def time_slice_df(df, num_rows=50, time_col='block_timestamp', sus_col='is_sus',
     # print(df.iloc[sus_index])
 
     # Slice the DataFrame starting from the 'sus_index'
-    df_sliced = df.iloc[sus_index:sus_index + num_rows]
+    df_sliced = df.iloc[sus_index:sus_index + num_rows].reset_index(drop=True)
 
-    return df_sliced
+    df_interaction = recalculate_interactions(df_sliced)
+
+    z_score_df = add_z_score(df_interaction,Z_SCORE_COLS)
+
+    ratio_df = add_ratio_features(z_score_df)
+
+
+    return ratio_df
